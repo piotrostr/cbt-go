@@ -31,16 +31,15 @@ func createTableIfNotExists(ctx context.Context, cfg *Config) error {
 		return err
 	}
 
-	if !(len(tables) == 0) {
-		if !slices.Contains(tables, cfg.tableName) {
-			err = adminClient.CreateTable(ctx, cfg.tableName)
-			if err != nil {
-				return err
-			}
+	if len(tables) == 0 || !slices.Contains(tables, cfg.tableName) {
+		err = adminClient.CreateTable(ctx, cfg.tableName)
+		if err != nil {
+			return err
 		}
+		fmt.Printf("Table %s created successfully \n", cfg.tableName)
+	} else {
+		fmt.Printf("Table %s already exists\n", cfg.tableName)
 	}
-
-	fmt.Printf("Table %s created successfully", cfg.tableName)
 
 	return nil
 }
