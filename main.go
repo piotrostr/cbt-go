@@ -38,7 +38,7 @@ func main() {
 				fmt.Printf("write failed: %v\n", err)
 				return
 			}
-			elapsed := time.Since(start).Abs().Milliseconds()
+			elapsed := time.Since(start).Milliseconds()
 			fmt.Printf("write successful in %d ms\n", elapsed)
 			<-devices
 		}()
