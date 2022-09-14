@@ -10,7 +10,7 @@ namespace=default
 role=roles/bigtable.admin
 
 # create kubernetes service account (KSA)
-kubectl create serviceaccount kube-spanner-admin \
+kubectl create serviceaccount kube-cbt-admin \
     --namespace $namespace
 
 # create google service account (GSA)

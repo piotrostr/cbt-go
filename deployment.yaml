@@ -6,8 +6,7 @@ metadata:
   labels:
     app: cbt-go-filler-deployment
 spec:
-  replicas: 100
-  revisionHistoryLimit: 5
+  replicas: 350
   selector:
     matchLabels:
       app: cbt-go-filler-deployment
@@ -22,8 +21,19 @@ spec:
         image: gcr.io/piotrostr-resources/cbt-go-filler
         resources:
           requests:
-            cpu: 500m
-            memory: 512Mi
-          limits:
             cpu: 1000m
-            memory: 1024Mi
+            memory: 512Mi
+
+---
+
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: cbt-go-filler-vpa
+spec:
+  targetRef:
+    apiVersion: "apps/v1"
+    kind:       Deployment
+    name:       cbt-go-filler-deployment
+  updatePolicy:
+    updateMode: "Auto"

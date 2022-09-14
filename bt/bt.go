@@ -96,19 +96,19 @@ func WriteRandomValues(ctx context.Context, cfg *Config) (*string, error) {
 		cfg.ColumnFamilyName,
 		"some_random_value_1",
 		timestamp,
-		[]byte(RandomString(300)),
+		[]byte(RandomString(3000)),
 	)
 	mut.Set(
 		cfg.ColumnFamilyName,
 		"some_random_value_2",
 		timestamp,
-		[]byte(RandomString(300)),
+		[]byte(RandomString(3000)),
 	)
 	mut.Set(
 		cfg.ColumnFamilyName,
 		"some_random_value_3",
 		timestamp,
-		[]byte(RandomString(300)),
+		[]byte(RandomString(3000)),
 	)
 
 	rowKey := fmt.Sprintf("phone#%s#%s", RandomString(16), RandomString(16))
