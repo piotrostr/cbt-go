@@ -14,9 +14,10 @@ import (
 var ctx = context.Background()
 
 type Config struct {
-	projectID  string
-	instanceID string
-	tableName  string
+	projectID        string
+	instanceID       string
+	tableName        string
+	columnFamilyName string
 }
 
 func createTableIfNotExists(ctx context.Context, cfg *Config) error {
@@ -31,7 +32,7 @@ func createTableIfNotExists(ctx context.Context, cfg *Config) error {
 		return err
 	}
 
-	if len(tables) == 0 || !slices.Contains(tables, cfg.tableName) {
+	if !slices.Contains(tables, cfg.tableName) {
 		err = adminClient.CreateTable(ctx, cfg.tableName)
 		if err != nil {
 			return err
@@ -44,6 +45,35 @@ func createTableIfNotExists(ctx context.Context, cfg *Config) error {
 	return nil
 }
 
+func createColumnFamiliesIfNotExist(ctx context.Context, cfg *Config) error {
+	adminClient, err := bigtable.NewAdminClient(ctx, cfg.projectID, cfg.instanceID)
+	if err != nil {
+		return err
+	}
+	defer adminClient.Close()
+
+	tblInfo, err := adminClient.TableInfo(ctx, cfg.tableName)
+	if err != nil {
+		return err
+	}
+
+	columnFamilyNames := make([]string, len(tblInfo.FamilyInfos))
+	for _, entry := range tblInfo.FamilyInfos {
+		columnFamilyNames = append(columnFamilyNames, entry.Name)
+	}
+
+	if !slices.Contains(columnFamilyNames, cfg.columnFamilyName) {
+		err = adminClient.CreateColumnFamily(ctx, cfg.tableName, "stats_summary")
+		if err != nil {
+			return err
+		}
+		fmt.Printf("Column family stats_summary created successfully \n")
+	} else {
+		fmt.Printf("Column family stats_summary already exists\n")
+	}
+	return nil
+}
+
 func write(ctx context.Context, cfg *Config) (*string, error) {
 	client, err := bigtable.NewClient(ctx, cfg.projectID, cfg.instanceID)
 	if err != nil {
@@ -51,7 +81,6 @@ func write(ctx context.Context, cfg *Config) (*string, error) {
 	}
 	defer client.Close()
 	tbl := client.Open(cfg.tableName)
-	columnFamilyName := "stats_summary"
 	timestamp := bigtable.Now()
 
 	mut := bigtable.NewMutation()
@@ -61,9 +90,9 @@ func write(ctx context.Context, cfg *Config) (*string, error) {
 		return nil, fmt.Errorf("binary.Write failed: %v", err)
 	}
 
-	mut.Set(columnFamilyName, "connected_cell", timestamp, buf.Bytes())
-	mut.Set(columnFamilyName, "connected_wifi", timestamp, buf.Bytes())
-	mut.Set(columnFamilyName, "os_build", timestamp, []byte("PQ2A.190405.003"))
+	mut.Set(cfg.columnFamilyName, "connected_cell", timestamp, buf.Bytes())
+	mut.Set(cfg.columnFamilyName, "connected_wifi", timestamp, buf.Bytes())
+	mut.Set(cfg.columnFamilyName, "os_build", timestamp, []byte("PQ2A.190405.003"))
 
 	rowKey := "phone#4c410523#20190501"
 	if err := tbl.Apply(ctx, rowKey, mut); err != nil {
@@ -75,9 +104,10 @@ func write(ctx context.Context, cfg *Config) (*string, error) {
 
 func main() {
 	cfg := &Config{
-		projectID:  "piotrostr-resources",
-		instanceID: "my-instance-id",
-		tableName:  "mobile-time-series",
+		projectID:        "piotrostr-resources",
+		instanceID:       "my-instance-id",
+		tableName:        "mobile-time-series",
+		columnFamilyName: "stats_summary",
 	}
 
 	if err := createTableIfNotExists(ctx, cfg); err != nil {
@@ -85,11 +115,15 @@ func main() {
 		return
 	}
 
-	rowKey, err := write(ctx, cfg)
-	if err != nil {
-		fmt.Printf("write failed: %v\n", err)
+	if err := createColumnFamiliesIfNotExist(ctx, cfg); err != nil {
+		fmt.Printf("createColumnFamiliesIfNotExist failed: %v\n", err)
 		return
 	}
 
-	fmt.Printf("Successfully wrote row: %s\n", *rowKey)
+	if rowKey, err := write(ctx, cfg); err != nil {
+		fmt.Printf("write failed: %v\n", err)
+		return
+	} else {
+		fmt.Printf("write successful row: %s\n", *rowKey)
+	}
 }
