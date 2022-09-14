@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"math/rand"
+	"time"
 
 	"cloud.google.com/go/bigtable"
 	"golang.org/x/exp/slices"
@@ -71,7 +73,7 @@ func CreateColumnFamiliesIfNotExist(ctx context.Context, cfg *Config) error {
 	return nil
 }
 
-func Write(ctx context.Context, cfg *Config) (*string, error) {
+func WriteRandomValues(ctx context.Context, cfg *Config) (*string, error) {
 	client, err := bigtable.NewClient(ctx, cfg.ProjectID, cfg.InstanceID)
 	if err != nil {
 		return nil, fmt.Errorf("bigtable.NewClient: %v", err)
@@ -90,11 +92,36 @@ func Write(ctx context.Context, cfg *Config) (*string, error) {
 	mut.Set(cfg.ColumnFamilyName, "connected_cell", timestamp, buf.Bytes())
 	mut.Set(cfg.ColumnFamilyName, "connected_wifi", timestamp, buf.Bytes())
 	mut.Set(cfg.ColumnFamilyName, "os_build", timestamp, []byte("PQ2A.190405.003"))
+	mut.Set(
+		cfg.ColumnFamilyName,
+		"some_random_value_1",
+		timestamp,
+		[]byte(RandomString(300)),
+	)
+	mut.Set(
+		cfg.ColumnFamilyName,
+		"some_random_value_2",
+		timestamp,
+		[]byte(RandomString(300)),
+	)
+	mut.Set(
+		cfg.ColumnFamilyName,
+		"some_random_value_3",
+		timestamp,
+		[]byte(RandomString(300)),
+	)
 
-	rowKey := "phone#4c410523#20190501"
+	rowKey := fmt.Sprintf("phone#%s#%s", RandomString(16), RandomString(16))
 	if err := tbl.Apply(ctx, rowKey, mut); err != nil {
 		return nil, fmt.Errorf("Apply: %v", err)
 	}
 
 	return &rowKey, nil
+}
+
+func RandomString(length int) string {
+	rand.Seed(time.Now().UnixNano())
+	b := make([]byte, length)
+	rand.Read(b)
+	return fmt.Sprintf("%x", b)[:length]
 }
