@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/piotrostr/cbt-go/bt"
 )
@@ -28,18 +29,22 @@ func main() {
 		return
 	}
 
-	// lets create fake 100 IOT devices, sending data to BigTable every second
-	deviceCount := 50
+	// lets create fake 1000 IOT devices, sending data to BigTable every second
+	deviceCount := 100
 	var wg sync.WaitGroup
-	for i := 1; i < deviceCount; i++ {
+	for i := 1; i <= deviceCount; i++ {
 		wg.Add(1)
 		go func(wg *sync.WaitGroup, i int) {
 			defer wg.Done()
-			if rowKey, err := bt.WriteRandomValues(ctx, cfg); err != nil {
-				fmt.Printf("device %d: write failed: %v\n", i, err)
-				return
-			} else {
-				fmt.Printf("device %d: write successful row: %s\n", i, *rowKey)
+
+			for {
+				start := time.Now()
+				if _, err := bt.WriteRandomValues(ctx, cfg); err != nil {
+					fmt.Printf("device %d: write failed: %v\n", i, err)
+					return
+				}
+				elapsed := time.Since(start).Abs().Milliseconds()
+				fmt.Printf("device %d: write successful in %d ms\n", i, elapsed)
 			}
 		}(&wg, i)
 	}
