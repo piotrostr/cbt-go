@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cbt-go-filler-deployment
+  namespace: default
+  labels:
+    app: cbt-go-filler-deployment
+spec:
+  replicas: 100
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app: cbt-go-filler-deployment
+  template:
+    metadata:
+      labels:
+        app: cbt-go-filler-deployment
+    spec:
+      serviceAccountName: kube-cbt-admin
+      containers:
+      - name: cbt-go-filler-deployment
+        image: gcr.io/piotrostr-resources/cbt-go-filler
+        resources:
+          requests:
+            cpu: 500m
+            memory: 512Mi
+          limits:
+            cpu: 1000m
+            memory: 1024Mi

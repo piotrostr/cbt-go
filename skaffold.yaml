@@ -1,0 +1,13 @@
+apiVersion: skaffold/v2beta28
+kind: Config
+metadata:
+  name: cbt-go
+build:
+  artifacts:
+  - image: gcr.io/piotrostr-resources/cbt-go-filler
+    docker:
+      dockerfile: Dockerfile
+deploy:
+  kubectl:
+    manifests:
+    - deployment.yaml
