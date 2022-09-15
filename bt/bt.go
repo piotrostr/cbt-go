@@ -62,18 +62,22 @@ func CreateColumnFamiliesIfNotExist(ctx context.Context, cfg *Config) error {
 	}
 
 	if !slices.Contains(columnFamilyNames, cfg.ColumnFamilyName) {
-		err = adminClient.CreateColumnFamily(ctx, cfg.TableName, "stats_summary")
+		err = adminClient.CreateColumnFamily(
+			ctx,
+			cfg.TableName,
+			cfg.ColumnFamilyName,
+		)
 		if err != nil {
 			return err
 		}
-		fmt.Printf("Column family stats_summary created successfully \n")
+		fmt.Printf("Column family %s created successfully\n", cfg.ColumnFamilyName)
 	} else {
-		fmt.Printf("Column family stats_summary already exists\n")
+		fmt.Printf("Column family %s already exists\n", cfg.ColumnFamilyName)
 	}
 	return nil
 }
 
-func WriteRandomValues(ctx context.Context, cfg *Config) (*string, error) {
+func WriteRandomValues(ctx context.Context, cfg *Config, row string) (*string, error) {
 	client, err := bigtable.NewClient(ctx, cfg.ProjectID, cfg.InstanceID)
 	if err != nil {
 		return nil, fmt.Errorf("bigtable.NewClient: %v", err)
@@ -89,9 +93,6 @@ func WriteRandomValues(ctx context.Context, cfg *Config) (*string, error) {
 		return nil, fmt.Errorf("binary.Write failed: %v", err)
 	}
 
-	mut.Set(cfg.ColumnFamilyName, "connected_cell", timestamp, buf.Bytes())
-	mut.Set(cfg.ColumnFamilyName, "connected_wifi", timestamp, buf.Bytes())
-	mut.Set(cfg.ColumnFamilyName, "os_build", timestamp, []byte("PQ2A.190405.003"))
 	mut.Set(
 		cfg.ColumnFamilyName,
 		"some_random_value_1",
@@ -111,12 +112,34 @@ func WriteRandomValues(ctx context.Context, cfg *Config) (*string, error) {
 		[]byte(RandomString(3000)),
 	)
 
-	rowKey := fmt.Sprintf("phone#%s#%s", RandomString(16), RandomString(16))
-	if err := tbl.Apply(ctx, rowKey, mut); err != nil {
+	if err := tbl.Apply(ctx, row, mut); err != nil {
 		return nil, fmt.Errorf("Apply: %v", err)
 	}
 
-	return &rowKey, nil
+	return &row, nil
+}
+
+func ReadFromTable(ctx context.Context, cfg *Config) error {
+	client, err := bigtable.NewClient(ctx, cfg.ProjectID, cfg.InstanceID)
+	if err != nil {
+		return fmt.Errorf("bigtable.NewClient: %v", err)
+	}
+	defer client.Close()
+
+	tbl := client.Open(cfg.TableName)
+	err = tbl.ReadRows(
+		ctx,
+		bigtable.PrefixRange("random#"),
+		func(r bigtable.Row) bool {
+			fmt.Println(r)
+			return true
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("ReadRow: %v", err)
+	}
+
+	return nil
 }
 
 func RandomString(length int) string {
