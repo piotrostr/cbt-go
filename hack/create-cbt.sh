@@ -1,7 +1,7 @@
 #!/bin/bash
 
-instance_id=my-instance-id
-cluster_id=my-cluster-id
+instance_id=iot-example-instance
+cluster_id=iot-example-cluster
 zone=us-central1-a
 
 time gcloud bigtable instances create $instance_id \

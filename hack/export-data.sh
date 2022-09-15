@@ -1,10 +1,10 @@
 #!/bin/bash
 
 project_id=piotrostr-resources
-instance_id=my-instance-id
+instance_id=iot-example-instance
 region=us-central1
 bucket_name=gs://$project_id-$instance_id/
-table_id=mobile-time-series
+table_id=random-time-series
 
 gcloud services enable \
     storage.googleapis.com \

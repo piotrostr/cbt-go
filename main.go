@@ -18,17 +18,17 @@ var (
 	)
 	instanceID = flag.String(
 		"instance",
-		"my-instance-id",
+		"iot-example-instance",
 		"The Cloud Bigtable instance ID",
 	)
 	tableName = flag.String(
 		"table",
-		"mobile-time-series",
+		"random-time-series",
 		"The Cloud Bigtable table ID",
 	)
 	columnFamilyName = flag.String(
 		"column-family",
-		"stats_summary",
+		"cf",
 		"The Cloud Bigtable column family ID",
 	)
 	runWrite = flag.Bool(

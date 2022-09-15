@@ -1,6 +1,6 @@
 #!/bin/bash
 
-cluster_id=cbt-filler-cluster
+cluster_id=cpu-intensive-cluster
 region=us-central1
 
 gcloud container clusters create-auto $cluster_id \

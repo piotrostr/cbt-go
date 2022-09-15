@@ -1,7 +1,7 @@
 #!/bin/bash
 
-instance_id=my-instance-id
-cluster_id=cbt-filler-cluster
+instance_id=iot-example-instance
+cluster_id=cpu-intensive-cluster
 region=us-central1
 
 gcloud bigtable instances delete $instance_id \
