@@ -3,7 +3,7 @@ resource "google_bigtable_instance" "iot_example_instance" {
 
   cluster {
     cluster_id   = "iot-example-cluster"
-    zone         = var.region
+    zone         = var.zone
     num_nodes    = 1
     storage_type = "SSD"
   }
