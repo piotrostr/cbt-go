@@ -3,8 +3,11 @@ kind: Config
 metadata:
   name: cbt-go
 build:
+  googleCloudBuild: {}
   artifacts:
   - image: gcr.io/piotrostr-resources/cbt-go-filler
+    platforms:
+      - "linux/amd64"
     docker:
       dockerfile: Dockerfile
 deploy:
