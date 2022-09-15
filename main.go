@@ -70,29 +70,35 @@ func Write(ctx context.Context, cfg *bt.Config, workerCount int) error {
 	}
 
 	workersQueue := make(chan int, workerCount)
+	errch := make(chan error, workerCount)
 	rand.Seed(time.Now().UnixNano())
 	deviceID := rand.Intn(100)
 	for {
 		workersQueue <- 1
 
-		go func() {
-			row := fmt.Sprintf("device/%d/%d", deviceID, time.Now().UnixNano())
+		select {
+		case err := <-errch:
+			return err
+		default:
+			go func() {
+				row := fmt.Sprintf("device/%d/%d", deviceID, time.Now().UnixNano())
 
-			start := time.Now()
-			if err := bt.WriteRandomValues(ctx, cfg, row); err != nil {
-				log.Error(err.Error())
-				return
-			}
-			elapsed := time.Since(start).Milliseconds()
+				start := time.Now()
+				if err := bt.WriteRandomValues(ctx, cfg, row); err != nil {
+					errch <- err
+					return
+				}
+				elapsed := time.Since(start).Milliseconds()
 
-			log.Info(
-				"Write successful",
-				zap.String("row", row),
-				zap.Int64("elapsed", elapsed),
-			)
+				log.Info(
+					"Write successful",
+					zap.String("row", row),
+					zap.Int64("elapsed", elapsed),
+				)
 
-			<-workersQueue
-		}()
+				<-workersQueue
+			}()
+		}
 	}
 
 }
@@ -116,7 +122,10 @@ func main() {
 	)
 
 	if *runWrite {
-		Write(ctx, cfg, *workerCount)
+		err := Write(ctx, cfg, *workerCount)
+		if err != nil {
+			log.Fatal("Write", zap.Error(err))
+		}
 	} else if *runRead {
 		err := bt.ReadBasedOnPrefix(
 			ctx,
@@ -124,7 +133,7 @@ func main() {
 			*prefix,
 		)
 		if err != nil {
-			log.Error("ReadBasedOnPrefix", zap.Error(err))
+			log.Fatal("ReadBasedOnPrefix", zap.Error(err))
 			return
 		}
 	} else {
