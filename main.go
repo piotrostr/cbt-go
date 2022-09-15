@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/piotrostr/cbt-go/bt"
+	"github.com/piotrostr/logger"
+	"go.uber.org/zap"
 )
 
 var (
@@ -55,15 +57,16 @@ var (
 
 var ctx = context.Background()
 
-func Write(ctx context.Context, cfg *bt.Config, workerCount int) {
+var log = logger.NewLogger()
+
+func Write(ctx context.Context, cfg *bt.Config, workerCount int) error {
 	if err := bt.CreateTableIfNotExists(ctx, cfg); err != nil {
-		fmt.Printf("CreateTableIfNotExists failed: %v\n", err)
-		return
+		return err
 	}
 
 	if err := bt.CreateColumnFamiliesIfNotExist(ctx, cfg); err != nil {
-		fmt.Printf("CreateColumnFamiliesIfNotExist failed: %v\n", err)
-		return
+		log.Error(err.Error())
+		return err
 	}
 
 	workersQueue := make(chan int, workerCount)
@@ -76,13 +79,17 @@ func Write(ctx context.Context, cfg *bt.Config, workerCount int) {
 			row := fmt.Sprintf("device/%d/%d", deviceID, time.Now().UnixNano())
 
 			start := time.Now()
-			if _, err := bt.WriteRandomValues(ctx, cfg, row); err != nil {
-				fmt.Printf("Write failed: %v\n", err)
+			if err := bt.WriteRandomValues(ctx, cfg, row); err != nil {
+				log.Error(err.Error())
 				return
 			}
 			elapsed := time.Since(start).Milliseconds()
 
-			fmt.Printf("Write successful %s (%d ms)\n", row, elapsed)
+			log.Info(
+				"Write successful",
+				zap.String("row", row),
+				zap.Int64("elapsed", elapsed),
+			)
 
 			<-workersQueue
 		}()
@@ -100,6 +107,14 @@ func main() {
 		ColumnFamilyName: *columnFamilyName,
 	}
 
+	log.Info(
+		"Config",
+		zap.String("project", cfg.ProjectID),
+		zap.String("instance", cfg.InstanceID),
+		zap.String("table", cfg.TableName),
+		zap.String("column-family", cfg.ColumnFamilyName),
+	)
+
 	if *runWrite {
 		Write(ctx, cfg, *workerCount)
 	} else if *runRead {
@@ -109,10 +124,10 @@ func main() {
 			*prefix,
 		)
 		if err != nil {
-			fmt.Printf("Read failed: %v\n", err)
+			log.Error("ReadBasedOnPrefix", zap.Error(err))
 			return
 		}
 	} else {
-		fmt.Println("Nothing to do, use --write or --read flag")
+		log.Info("Nothing to do, use --write or --read flag\n")
 	}
 }

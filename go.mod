@@ -4,6 +4,7 @@ go 1.19
 
 require (
 	cloud.google.com/go/bigtable v1.16.0
+	github.com/piotrostr/logger v0.0.0-20220915201702-ea2f99c53c27
 	go.uber.org/zap v1.23.0
 	golang.org/x/exp v0.0.0-20220909182711-5c715a9e8561
 )

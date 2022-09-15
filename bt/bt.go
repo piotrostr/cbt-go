@@ -13,6 +13,8 @@ import (
 	pretty "github.com/jedib0t/go-pretty/v6/table"
 
 	"cloud.google.com/go/bigtable"
+	"github.com/piotrostr/logger"
+	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 )
 
@@ -22,6 +24,8 @@ type Config struct {
 	TableName        string
 	ColumnFamilyName string
 }
+
+var log = logger.NewLogger()
 
 func CreateTableIfNotExists(ctx context.Context, cfg *Config) error {
 	adminClient, err := bigtable.NewAdminClient(ctx, cfg.ProjectID, cfg.InstanceID)
@@ -40,9 +44,16 @@ func CreateTableIfNotExists(ctx context.Context, cfg *Config) error {
 		if err != nil {
 			return err
 		}
-		fmt.Printf("Table %s created successfully \n", cfg.TableName)
+
+		log.Info(
+			"Table created successfully",
+			zap.String("table-name", cfg.TableName),
+		)
 	} else {
-		fmt.Printf("Table %s already exists\n", cfg.TableName)
+		log.Info(
+			"Table created successfully",
+			zap.String("table-name", cfg.TableName),
+		)
 	}
 
 	return nil
@@ -74,17 +85,27 @@ func CreateColumnFamiliesIfNotExist(ctx context.Context, cfg *Config) error {
 		if err != nil {
 			return err
 		}
-		fmt.Printf("Column family %s created successfully\n", cfg.ColumnFamilyName)
+		log.Info(
+			"Column family created successfully",
+			zap.String("column-family-name", cfg.ColumnFamilyName),
+		)
 	} else {
-		fmt.Printf("Column family %s already exists\n", cfg.ColumnFamilyName)
+		log.Info(
+			"Column family already exists",
+			zap.String("column-family-name", cfg.ColumnFamilyName),
+		)
 	}
 	return nil
 }
 
-func WriteRandomValues(ctx context.Context, cfg *Config, row string) (*string, error) {
+func WriteRandomValues(
+	ctx context.Context,
+	cfg *Config,
+	row string,
+) error {
 	client, err := bigtable.NewClient(ctx, cfg.ProjectID, cfg.InstanceID)
 	if err != nil {
-		return nil, fmt.Errorf("bigtable.NewClient: %v", err)
+		return err
 	}
 	defer client.Close()
 	tbl := client.Open(cfg.TableName)
@@ -92,36 +113,51 @@ func WriteRandomValues(ctx context.Context, cfg *Config, row string) (*string, e
 
 	mut := bigtable.NewMutation()
 
+	var rbytes []byte
+	rbytes, err = RandomFloatBytes()
+	if err != nil {
+		return err
+	}
 	mut.Set(
 		cfg.ColumnFamilyName,
 		"some_random_value_1",
 		timestamp,
-		RandomFloatBytes(),
+		rbytes,
 	)
+
+	rbytes, err = RandomFloatBytes()
+	if err != nil {
+		return err
+	}
 	mut.Set(
 		cfg.ColumnFamilyName,
 		"some_random_value_2",
 		timestamp,
-		RandomFloatBytes(),
+		rbytes,
 	)
+
+	rbytes, err = RandomFloatBytes()
+	if err != nil {
+		return err
+	}
 	mut.Set(
 		cfg.ColumnFamilyName,
 		"some_random_value_3",
 		timestamp,
-		RandomFloatBytes(),
+		rbytes,
 	)
 
 	if err := tbl.Apply(ctx, row, mut); err != nil {
-		return nil, fmt.Errorf("Apply: %v", err)
+		return err
 	}
 
-	return &row, nil
+	return nil
 }
 
 func ReadBasedOnPrefix(ctx context.Context, cfg *Config, prefix string) error {
 	client, err := bigtable.NewClient(ctx, cfg.ProjectID, cfg.InstanceID)
 	if err != nil {
-		return fmt.Errorf("bigtable.NewClient: %v", err)
+		return err
 	}
 	defer client.Close()
 
@@ -159,29 +195,35 @@ func ReadBasedOnPrefix(ctx context.Context, cfg *Config, prefix string) error {
 		opts...,
 	)
 	if err != nil {
-		return fmt.Errorf("ReadRow: %v", err)
+		return err
 	}
 	elapsed := time.Since(start).Milliseconds()
 
 	t.Render()
-	fmt.Printf("Elapsed: %d ms\n", elapsed)
+	log.Info(
+		"Time elapsed reading",
+		zap.Int64("ms", elapsed),
+	)
 
 	return nil
 }
 
-func RandomString(length int) string {
+func RandomString(length int) (string, error) {
 	rand.Seed(time.Now().UnixNano())
 	b := make([]byte, length)
-	rand.Read(b)
-	return fmt.Sprintf("%x", b)[:length]
+	_, err := rand.Read(b)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%x", b)[:length], nil
 }
 
-func RandomFloatBytes() []byte {
+func RandomFloatBytes() ([]byte, error) {
 	rand.Seed(time.Now().UnixNano())
 	var buf bytes.Buffer
 	err := binary.Write(&buf, binary.LittleEndian, rand.Float64())
 	if err != nil {
-		fmt.Println("binary.Write failed:", err)
+		return nil, err
 	}
-	return buf.Bytes()
+	return buf.Bytes(), nil
 }
