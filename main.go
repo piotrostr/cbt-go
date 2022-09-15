@@ -62,12 +62,13 @@ func Write(ctx context.Context, cfg *bt.Config, workerCount int) {
 	}
 
 	workersQueue := make(chan int, workerCount)
+	rand.Seed(time.Now().UnixNano())
 	deviceID := rand.Intn(100)
 	for {
 		workersQueue <- 1
 
 		go func() {
-			row := fmt.Sprintf("device/%d/%d", deviceID, time.Now().Unix())
+			row := fmt.Sprintf("device/%d/%d", deviceID, time.Now().UnixNano())
 
 			start := time.Now()
 			if _, err := bt.WriteRandomValues(ctx, cfg, row); err != nil {
