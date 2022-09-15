@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 	"math/rand"
 	"os"
@@ -130,18 +131,28 @@ func ReadBasedOnPrefix(ctx context.Context, cfg *Config, prefix string) error {
 	}
 	t := pretty.NewWriter()
 	t.SetOutputMirror(os.Stdout)
-	// t.AppendHeader(pretty.Row{"Row", "Column Family"})
+	t.AppendHeader(pretty.Row{"Row Key", "Column", "Value"})
 	start := time.Now()
 	err = tbl.ReadRows(
 		ctx,
 		bigtable.PrefixRange(prefix),
 		func(r bigtable.Row) bool {
+			rowKeyAppended := false
 			for _, column := range r[cfg.ColumnFamilyName] {
-				t.AppendRow(pretty.Row{
-					column.Row,
-					column.Column,
-					string(column.Value[:10]),
-				})
+				if !rowKeyAppended {
+					t.AppendRow(pretty.Row{
+						r.Key(),
+						column.Column,
+						"0x" + hex.EncodeToString(column.Value),
+					})
+					rowKeyAppended = true
+				} else {
+					t.AppendRow(pretty.Row{
+						"",
+						column.Column,
+						"0x" + hex.EncodeToString(column.Value),
+					})
+				}
 			}
 			return true
 		},
