@@ -43,7 +43,7 @@ var (
 	)
 	workerCount = flag.Int(
 		"workers",
-		10,
+		100,
 		"Number of workers",
 	)
 )
@@ -63,21 +63,23 @@ func Write(ctx context.Context, cfg *bt.Config, workerCount int) {
 
 	workersQueue := make(chan int, workerCount)
 	deviceID := rand.Intn(100)
-	row := fmt.Sprintf("device/%d/%d", deviceID, time.Now().Unix())
 	for {
 		workersQueue <- 1
 
-		go func(row string) {
-			start := time.Now()
+		go func() {
+			row := fmt.Sprintf("device/%d/%d", deviceID, time.Now().Unix())
 
+			start := time.Now()
 			if _, err := bt.WriteRandomValues(ctx, cfg, row); err != nil {
 				fmt.Printf("Write failed: %v\n", err)
 				return
 			}
 			elapsed := time.Since(start).Milliseconds()
-			fmt.Printf("Write successful in %d ms\n", elapsed)
+
+			fmt.Printf("Write successful %s (%d ms)\n", row, elapsed)
+
 			<-workersQueue
-		}(row)
+		}()
 	}
 
 }
