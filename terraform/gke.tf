@@ -2,6 +2,9 @@ resource "google_container_cluster" "cluster" {
   name               = "cpu-intensive-cluster"
   location           = var.region
   initial_node_count = 3
+  vertical_pod_autoscaling {
+    enabled = true
+  }
 }
 
 resource "google_container_node_pool" "cpu_intensive" {
