@@ -9,6 +9,8 @@ import (
 	"os"
 	"time"
 
+	pretty "github.com/jedib0t/go-pretty/v6/table"
+
 	"cloud.google.com/go/bigtable"
 	"golang.org/x/exp/slices"
 )
@@ -88,29 +90,24 @@ func WriteRandomValues(ctx context.Context, cfg *Config, row string) (*string, e
 	timestamp := bigtable.Now()
 
 	mut := bigtable.NewMutation()
-	buf := new(bytes.Buffer)
-	err = binary.Write(buf, binary.BigEndian, int64(1))
-	if err != nil {
-		return nil, fmt.Errorf("binary.Write failed: %v", err)
-	}
 
 	mut.Set(
 		cfg.ColumnFamilyName,
 		"some_random_value_1",
 		timestamp,
-		[]byte(RandomString(3000)),
+		RandomFloatBytes(),
 	)
 	mut.Set(
 		cfg.ColumnFamilyName,
 		"some_random_value_2",
 		timestamp,
-		[]byte(RandomString(3000)),
+		RandomFloatBytes(),
 	)
 	mut.Set(
 		cfg.ColumnFamilyName,
 		"some_random_value_3",
 		timestamp,
-		[]byte(RandomString(3000)),
+		RandomFloatBytes(),
 	)
 
 	if err := tbl.Apply(ctx, row, mut); err != nil {
@@ -131,12 +128,21 @@ func ReadBasedOnPrefix(ctx context.Context, cfg *Config, prefix string) error {
 	opts := []bigtable.ReadOption{
 		bigtable.LimitRows(50),
 	}
+	t := pretty.NewWriter()
+	t.SetOutputMirror(os.Stdout)
+	// t.AppendHeader(pretty.Row{"Row", "Column Family"})
 	start := time.Now()
 	err = tbl.ReadRows(
 		ctx,
 		bigtable.PrefixRange(prefix),
 		func(r bigtable.Row) bool {
-			fmt.Fprint(os.Stdout, r)
+			for _, column := range r[cfg.ColumnFamilyName] {
+				t.AppendRow(pretty.Row{
+					column.Row,
+					column.Column,
+					string(column.Value[:10]),
+				})
+			}
 			return true
 		},
 		opts...,
@@ -144,7 +150,10 @@ func ReadBasedOnPrefix(ctx context.Context, cfg *Config, prefix string) error {
 	if err != nil {
 		return fmt.Errorf("ReadRow: %v", err)
 	}
-	fmt.Printf("Elapsed: %d ms\n", time.Since(start).Milliseconds())
+	elapsed := time.Since(start).Milliseconds()
+
+	t.Render()
+	fmt.Printf("Elapsed: %d ms\n", elapsed)
 
 	return nil
 }
@@ -154,4 +163,14 @@ func RandomString(length int) string {
 	b := make([]byte, length)
 	rand.Read(b)
 	return fmt.Sprintf("%x", b)[:length]
+}
+
+func RandomFloatBytes() []byte {
+	rand.Seed(time.Now().UnixNano())
+	var buf bytes.Buffer
+	err := binary.Write(&buf, binary.LittleEndian, rand.Float64())
+	if err != nil {
+		fmt.Println("binary.Write failed:", err)
+	}
+	return buf.Bytes()
 }

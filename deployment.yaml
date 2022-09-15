@@ -6,7 +6,7 @@ metadata:
   labels:
     app: cbt-go-filler-deployment
 spec:
-  replicas: 350
+  replicas: 15
   selector:
     matchLabels:
       app: cbt-go-filler-deployment
