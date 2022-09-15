@@ -15,8 +15,7 @@ resource "google_container_node_pool" "cpu_intensive" {
   }
 
   node_config {
-    preemptible  = true
     spot         = true
-    machine_type = "c2d-highcpu-4"
+    machine_type = "c2d-highcpu-8"
   }
 }
