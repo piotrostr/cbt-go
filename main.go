@@ -52,12 +52,12 @@ var ctx = context.Background()
 
 func Write(ctx context.Context, cfg *bt.Config, workerCount int) {
 	if err := bt.CreateTableIfNotExists(ctx, cfg); err != nil {
-		fmt.Printf("createTableIfNotExists failed: %v\n", err)
+		fmt.Printf("CreateTableIfNotExists failed: %v\n", err)
 		return
 	}
 
 	if err := bt.CreateColumnFamiliesIfNotExist(ctx, cfg); err != nil {
-		fmt.Printf("createColumnFamiliesIfNotExist failed: %v\n", err)
+		fmt.Printf("CreateColumnFamiliesIfNotExist failed: %v\n", err)
 		return
 	}
 
@@ -71,11 +71,11 @@ func Write(ctx context.Context, cfg *bt.Config, workerCount int) {
 			start := time.Now()
 
 			if _, err := bt.WriteRandomValues(ctx, cfg, row); err != nil {
-				fmt.Printf("write failed: %v\n", err)
+				fmt.Printf("Write failed: %v\n", err)
 				return
 			}
 			elapsed := time.Since(start).Milliseconds()
-			fmt.Printf("write successful in %d ms\n", elapsed)
+			fmt.Printf("Write successful in %d ms\n", elapsed)
 			<-workersQueue
 		}(row)
 	}
@@ -95,8 +95,12 @@ func main() {
 	if *runWrite {
 		Write(ctx, cfg, *workerCount)
 	} else if *runRead {
-		fmt.Println("read")
+		err := bt.ReadFromTable(ctx, cfg)
+		if err != nil {
+			fmt.Printf("Read failed: %v\n", err)
+			return
+		}
 	} else {
-		fmt.Println("nothing to do, use --write or --read flag")
+		fmt.Println("Nothing to do, use --write or --read flag")
 	}
 }
