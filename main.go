@@ -46,6 +46,11 @@ var (
 		100,
 		"Number of workers",
 	)
+	prefix = flag.String(
+		"prefix",
+		"device/26",
+		"Prefix to read",
+	)
 )
 
 var ctx = context.Background()
@@ -98,7 +103,11 @@ func main() {
 	if *runWrite {
 		Write(ctx, cfg, *workerCount)
 	} else if *runRead {
-		err := bt.ReadFromTable(ctx, cfg)
+		err := bt.ReadBasedOnPrefix(
+			ctx,
+			cfg,
+			*prefix,
+		)
 		if err != nil {
 			fmt.Printf("Read failed: %v\n", err)
 			return

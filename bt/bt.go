@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math/rand"
+	"os"
 	"time"
 
 	"cloud.google.com/go/bigtable"
@@ -119,7 +120,7 @@ func WriteRandomValues(ctx context.Context, cfg *Config, row string) (*string, e
 	return &row, nil
 }
 
-func ReadFromTable(ctx context.Context, cfg *Config) error {
+func ReadBasedOnPrefix(ctx context.Context, cfg *Config, prefix string) error {
 	client, err := bigtable.NewClient(ctx, cfg.ProjectID, cfg.InstanceID)
 	if err != nil {
 		return fmt.Errorf("bigtable.NewClient: %v", err)
@@ -127,17 +128,23 @@ func ReadFromTable(ctx context.Context, cfg *Config) error {
 	defer client.Close()
 
 	tbl := client.Open(cfg.TableName)
+	opts := []bigtable.ReadOption{
+		bigtable.LimitRows(50),
+	}
+	start := time.Now()
 	err = tbl.ReadRows(
 		ctx,
-		bigtable.PrefixRange("random#"),
+		bigtable.PrefixRange(prefix),
 		func(r bigtable.Row) bool {
-			fmt.Println(r)
+			fmt.Fprint(os.Stdout, r)
 			return true
 		},
+		opts...,
 	)
 	if err != nil {
 		return fmt.Errorf("ReadRow: %v", err)
 	}
+	fmt.Printf("Elapsed: %d ms\n", time.Since(start).Milliseconds())
 
 	return nil
 }
