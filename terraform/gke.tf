@@ -14,7 +14,8 @@ resource "google_service_account" "gcr_sa" {
 }
 
 resource "google_project_iam_binding" "storage_admin" {
-  role = "roles/storage.objectViewer"
+  project = var.project
+  role    = "roles/storage.objectViewer"
   members = [
     "serviceAccount:${google_service_account.gcr_sa.email}"
   ]
